@@ -10,6 +10,7 @@ datasets e sobre os modelos de ML utilizando os calculos da IRT.
 
 Link do código-fonte: https://github.com/LucasFerraroCardoso/IRT_OpenML
 """
+
 import os
 import argparse
 import pandas as pd
@@ -98,12 +99,18 @@ def plotAll(dict_tmp, out, bins = None, save = False):
     parameters = ['Discriminacao','Dificuldade','Adivinhacao']
     for dataset in list(dict_tmp.keys()):
         for param in parameters:
-            plothist(dict_tmp,out,param,dataset,bins = bins,save = save)
+            plothist(dict_tmp, param, dataset, out, bins = bins, save = save)
     
     if save:
         print('\nTodos os histogramas foram salvos \o/\n')
 
-def plothist(dict_tmp,parameter,dataset, out,bins = None,save = False):
+# Erro: O parâmetro "dataset" recebe o parâmetro, que deveria ser "Discriminacao"
+# O plotAll chama a função da seguinte maneira:
+#   plothist(dict_tmp, out, param, dataset, bins = bins, save = save)
+#   plothist(dict_tmp, parameter, dataset, out, bins = None, save = False)
+# Logo abaixo da chamada, tem a definição da função, portanto:
+# Correção: Só mudar a ordem dos parâmetros em plotAll
+def plothist(dict_tmp, parameter, dataset, out, bins = None, save = False):
     """
     Função que gera histograma de determinado parametro de item de um dataset
     específico.
@@ -119,6 +126,11 @@ def plothist(dict_tmp,parameter,dataset, out,bins = None,save = False):
     
     from matplotlib import pyplot as plt
     
+    ## print("Nome do dataset: " + dataset)
+    ## print("Nome do parâmetro: " + parameter)
+    ## print(dict_tmp[dataset].keys())
+    # Discriminacao
+    # Discriminacao
     lista = [i[1] for i in dict_tmp[dataset][parameter]]
     
     if bins == None:
@@ -627,8 +639,24 @@ def getThetaResp(respMatrix):
     
     return res_vector, theta
     
-def main(arg_dir = 'output',respMatrix=None,IRTparam=None,accur=None,nameData=None,limit_dif = 1,limit_dis = 0.75,limit_adv = 0.2,plotDataHist = None,plotAllHist = False,bins = None,plotDataCCC = None,plotAllCCC = False,scoreData = None,scoreAll = False,save = False):  
-    out  = '/'+arg_dir    
+def main(arg_dir = 'output',
+         respMatrix = None,
+         IRTparam = None,
+         accur = None,
+         nameData = None,
+         limit_dif = 1,
+         limit_dis = 0.75,
+         limit_adv = 0.2,
+         plotDataHist = None,
+         plotAllHist = False,
+         bins = None,
+         plotDataCCC = None,
+         plotAllCCC = False,
+         scoreData = None,
+         scoreAll = False,
+         save = False):  
+    # TODO: Colocar junção de diretório por OS. Vai que o cara ainda usa windows
+    out  = '/' + arg_dir    
     
     #Proficiencia inicial de cada metodo
     list_theta = {}      
@@ -685,12 +713,13 @@ def main(arg_dir = 'output',respMatrix=None,IRTparam=None,accur=None,nameData=No
         p[parameter] = thetaClfEstimate(dict_tmp,irt_dict,irt_resp_dict,dataset,parameter,list_theta, out,save = save)
         dict_theta[dataset] = p
         icc_dict = CalcICC(dict_theta,irt_dict)
-        plotCCC(icc_dict,dict_tmp,dataset,parameter, out,save = save)
+        plotCCC(icc_dict, dict_tmp, dataset, parameter, out, save = save)
         
     if plotAllCCC:
         dict_theta = thetaAllClfEstimate(dict_tmp,irt_dict,irt_resp_dict,list_theta, out,save = save)
-        icc_dict = CalcICC(dict_theta,irt_dict)
-        plotAllCCC(icc_dict,dict_tmp, out,save = save)
+        icc_dict = CalcICC(dict_theta, irt_dict)
+        # TODO: Aparentemente, a função não existe
+        plotAllCCC(icc_dict, dict_tmp, out, save = save)
     
     if scoreData != None:
         dataset = scoreData
