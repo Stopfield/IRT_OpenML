@@ -551,8 +551,84 @@ def calcAllPro(icc_dict,dict_tmp, accur,out,save = False):
          
     if save:
         print('\nOs scores dos classificadores para todos os datasets foram salvos \o/\n')
+
+# ADDON
+def get_CCC_vega_chart(icc_dict, dict_tmp, dataset, parameter, out, save = False):
+    import altair as alt
+    import pandas as pd
     
-def plotCCC(icc_dict,dict_tmp,dataset,parameter, out,save = False):
+    lista_parametros = []
+    match parameter:
+        case "Dificuldade":
+            dif_ord, lista_parametros = calcDif(dict_tmp,dataset)
+        case "Discriminacao":
+            lista_parametros = sorted(list(dict_tmp[dataset]['Discriminacao']), key=lambda tup: tup[1])
+        case "Adivinhacao":
+            lista_parametros = sorted(list(dict_tmp[dataset]['Adivinhacao']), key=lambda tup: tup[1])
+    
+    list_index = [i[0] - 1 for i in lista_parametros]
+    tmp = {}
+    classificators = list(icc_dict[dataset][parameter].keys())
+    for clf in classificators:
+        lista = []
+        for i in list_index:
+            lista.append(list(icc_dict[dataset][parameter][clf])[i])
+        tmp[clf] = lista
+    
+    dados = pd.DataFrame({
+        "x": [i[1] for i in lista_parametros]
+    })
+
+    # Classificadores
+    classificators = [
+        'GaussianNB',
+        'KNeighborsClassifier(8)',
+        'DecisionTreeClassifier()',
+        'RandomForestClassifier',
+        'SVM',
+        'MLPClassifier',
+        'rand1'
+    ]
+    
+    # Vamos fazer o DataFrame do Pandas
+    for clf in classificators[:12]:
+        dados[f"{clf}"] = list(tmp[clf])
+    
+
+    
+    # # Agora, vamos plottar com o Altair
+    # chart = alt.Chart(dados).mark_line().encode(
+    #     x="x",
+    #     y="GaussianNB",
+    #     color=alt.Color('GaussianNB')
+    # )
+    # for clf in classificators[1:12]:
+    #     chart += alt.Chart(dados).mark_line().encode(
+    #         x="x",
+    #         y=clf,
+    #         color=alt.Color(clf)
+    #     )
+    
+    chart = alt.Chart(dados).mark_line().encode(
+        x=alt.X("x"),
+        y=alt.Y(alt.repeat("layer")).title("P(theta)").type("quantitative"),
+        color=alt.ColorDatum(alt.repeat("layer"))
+    ).repeat(layer=classificators)
+
+    # Salvar em um arquivo JSON (TODO: Retirar isso aqui. É Só debug)
+    with open("chart.json", "w") as file:
+        file.write(chart.to_json())
+
+    print(chart.to_json())
+    chart.save("chart.html")
+    print("Imprimido em chart.json")
+
+    print(dados)
+
+    ...
+# END-ADDON
+
+def plotCCC(icc_dict, dict_tmp, dataset, parameter, out, save = False):
     """
     Função que gera as Curvas Características de Classificador (CCC) com base
     no trabalho de Martínez-Plumed et al. (2016) para um determinado dataset e
@@ -567,22 +643,26 @@ def plotCCC(icc_dict,dict_tmp,dataset,parameter, out,save = False):
     
     from matplotlib import pyplot as plt
     
-    listap = []
+    lista_parametros = []
     if parameter == 'Dificuldade':
         # dis = [i for i in list(dict_tmp[dataset]['Discriminacao']) if i[1] > 0]
         # itens = [i[0]-1 for i in dis]
         # dif_ord = sorted(list(dict_tmp[dataset][parameter]), key=lambda tup: tup[1])
         # listap = [i for i in dif_ord if i[0]-1 in itens]
-        dif_ord,listap = calcDif(dict_tmp,dataset)
+        dif_ord, lista_parametros = calcDif(dict_tmp,dataset)
         
     elif parameter == 'Discriminacao':
-        listap = sorted(list(dict_tmp[dataset]['Discriminacao']), key=lambda tup: tup[1])
+        lista_parametros = sorted(list(dict_tmp[dataset]['Discriminacao']), key=lambda tup: tup[1])
         
     elif parameter == 'Adivinhacao':
-        listap = sorted(list(dict_tmp[dataset]['Adivinhacao']), key=lambda tup: tup[1])
+        lista_parametros = sorted(list(dict_tmp[dataset]['Adivinhacao']), key=lambda tup: tup[1])
         #raise ValueError("Os parametros permetidos sao Dificuldade e Descriminacaos")
     #print(listap)    
-    list_index = [i[0]-1 for i in listap]
+
+    # Gera o dicionário tmp (?)
+    # O dicionário tmp contém os classificadores e seus respectivos valores de parâmetros
+    # Vamos usá-lo daqui pra frente
+    list_index = [i[0] - 1 for i in lista_parametros]
     tmp = {}
     clfs = list(icc_dict[dataset][parameter].keys())
     for clf in clfs:
@@ -591,15 +671,27 @@ def plotCCC(icc_dict,dict_tmp,dataset,parameter, out,save = False):
             lista.append(list(icc_dict[dataset][parameter][clf])[i])
         tmp[clf] = lista
     #dif_dict = tmp
-    x = [i[1] for i in listap]
+
+    x = [i[1] for i in lista_parametros]
     plt.figure()
     plt.title(dataset)
     plt.xlabel(parameter)
     plt.ylabel('P(\u03B8)')
-    clfs = ['GaussianNB','KNeighborsClassifier(8)', 'DecisionTreeClassifier()', 'RandomForestClassifier', 'SVM', 'MLPClassifier', 'rand1']
+
+    # Aqui é gerado o gráfico
+    clfs = ['GaussianNB',
+            'KNeighborsClassifier(8)',
+            'DecisionTreeClassifier()',
+            'RandomForestClassifier',
+            'SVM',
+            'MLPClassifier',
+            'rand1']
+    
     #clfs = ['otimo','pessimo']
+
+    # Por que até :12?
     for clf in clfs[:12]:
-        plt.plot(x, list(tmp[clf]), label=clf, alpha=0.8, linewidth = 1)
+        plt.plot(x, list(tmp[clf]), label=clf, alpha=0.8, linewidth=1)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     if save:
@@ -638,7 +730,8 @@ def getThetaResp(respMatrix):
     res_vector = teste.to_numpy()
     
     return res_vector, theta
-    
+
+
 def main(arg_dir = 'output',
          respMatrix = None,
          IRTparam = None,
@@ -654,7 +747,9 @@ def main(arg_dir = 'output',
          plotAllCCC = False,
          scoreData = None,
          scoreAll = False,
-         save = False):  
+         save = False,
+         getVegaChart = False
+        ):
     # TODO: Colocar junção de diretório por OS. Vai que o cara ainda usa windows
     out  = '/' + arg_dir    
     
@@ -666,7 +761,7 @@ def main(arg_dir = 'output',
     
     if respMatrix == None and IRTparam == None:   
         #Lista todos os diretorios de datasets da pasta output
-        list_dir = os.listdir(os.getcwd()+out)
+        list_dir = os.listdir(os.getcwd() + out)
         for path in list_dir:
             
             theta = pd.read_csv(os.getcwd()+out+'/'+path+'/'+path+'_final.csv',index_col=0)
@@ -696,24 +791,46 @@ def main(arg_dir = 'output',
         
     
     dict_tmp = verificaParametros(irt_dict)
-    tmp_freq = freqParam(dict_tmp,limit_dif,limit_dis,limit_adv)
-    printFreq(tmp_freq,save = save)
+    tmp_freq = freqParam(dict_tmp, limit_dif, limit_dis, limit_adv)
+    printFreq(tmp_freq, save = save)
     
     if plotDataHist != None:
         dataset,parameter = plotDataHist.split(',')
-        plothist(dict_tmp,parameter,dataset, out,bins = bins,save = save)
+        plothist(dict_tmp, parameter, dataset, out, bins = bins, save = save)
         
     if plotAllHist:
         plotAll(dict_tmp, out, bins = bins, save = save)
         
     if plotDataCCC != None:
-        dataset,parameter = plotDataCCC.split(',')
+        dataset, parameter = plotDataCCC.split(',')
         dict_theta = {}
         p = {}
-        p[parameter] = thetaClfEstimate(dict_tmp,irt_dict,irt_resp_dict,dataset,parameter,list_theta, out,save = save)
+        p[parameter] = thetaClfEstimate(dict_tmp, irt_dict,irt_resp_dict,dataset,parameter,list_theta, out,save = save)
         dict_theta[dataset] = p
+        # 
         icc_dict = CalcICC(dict_theta,irt_dict)
         plotCCC(icc_dict, dict_tmp, dataset, parameter, out, save = save)
+    
+    # ADDON
+    if getVegaChart:
+        print("=== Vega chart aqui ===")
+        
+        dataset = "credit-g"
+        parameter = "Adivinhacao"
+
+        dict_theta = {}
+        p = {}
+
+        p[parameter] = thetaClfEstimate(dict_tmp, irt_dict,irt_resp_dict,dataset,parameter,list_theta, out,save = save)
+        dict_theta[dataset] = p
+        icc_dict = CalcICC(dict_theta,irt_dict)
+        get_CCC_vega_chart(icc_dict, dict_tmp, dataset, parameter, out, save = save)
+
+        print("=== Concluído! ===")
+        exit()
+        ...
+
+    # END-ADDON
         
     if plotAllCCC:
         dict_theta = thetaAllClfEstimate(dict_tmp,irt_dict,irt_resp_dict,list_theta, out,save = save)
@@ -779,7 +896,25 @@ if __name__ == '__main__':
                         default = False, help = 'Calcula o score de todos os classificadores para todos os datasets')
     parser.add_argument('-save', action = 'store_true', dest = 'save', required = False,
                         default = False, help = 'Salva os graficos mostrados na tela')
+    parser.add_argument('-getVegaChart', action = 'store_true', dest = 'getVegaChart', required = False,
+                        default = False, help = 'Retorna o JSON Vega-Lite do Parâmetro (WIP)')
     
     arguments = parser.parse_args()
     #out  = '/'+arguments.dir
-    main(arguments.dir,arguments.respMatrix,arguments.IRTparam,arguments.accur,arguments.nameData,arguments.limit_dif,arguments.limit_dis,arguments.limit_adv,arguments.plotDataHist,arguments.plotAllHist,arguments.bins,arguments.plotDataCCC,arguments.plotAllCCC,arguments.scoreData,arguments.scoreAll,arguments.save)
+    main(arguments.dir, 
+         arguments.respMatrix,
+         arguments.IRTparam,
+         arguments.accur,
+         arguments.nameData,
+         arguments.limit_dif,
+         arguments.limit_dis,
+         arguments.limit_adv,
+         arguments.plotDataHist,
+         arguments.plotAllHist,
+         arguments.bins,
+         arguments.plotDataCCC,
+         arguments.plotAllCCC,
+         arguments.scoreData,
+         arguments.scoreAll,
+         arguments.save,
+         arguments.getVegaChart)
