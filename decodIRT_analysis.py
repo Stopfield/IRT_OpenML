@@ -552,15 +552,16 @@ def calcAllPro(icc_dict,dict_tmp, accur,out,save = False):
     if save:
         print('\nOs scores dos classificadores para todos os datasets foram salvos \o/\n')
 
+# TODO: Fazer uma função que envia os parâmetros (icc_dict, dict_tmp, etc...) para a API
 # ADDON
-def get_CCC_vega_chart(icc_dict, dict_tmp, dataset, parameter, out, save = False):
+def get_CCC_info(icc_dict, dict_tmp, dataset, parameter):
     import altair as alt
     import pandas as pd
     
     lista_parametros = []
     match parameter:
         case "Dificuldade":
-            dif_ord, lista_parametros = calcDif(dict_tmp,dataset)
+            _, lista_parametros = calcDif(dict_tmp,dataset)
         case "Discriminacao":
             lista_parametros = sorted(list(dict_tmp[dataset]['Discriminacao']), key=lambda tup: tup[1])
         case "Adivinhacao":
@@ -594,38 +595,13 @@ def get_CCC_vega_chart(icc_dict, dict_tmp, dataset, parameter, out, save = False
     for clf in classificators[:12]:
         dados[f"{clf}"] = list(tmp[clf])
     
-
-    
-    # # Agora, vamos plottar com o Altair
-    # chart = alt.Chart(dados).mark_line().encode(
-    #     x="x",
-    #     y="GaussianNB",
-    #     color=alt.Color('GaussianNB')
-    # )
-    # for clf in classificators[1:12]:
-    #     chart += alt.Chart(dados).mark_line().encode(
-    #         x="x",
-    #         y=clf,
-    #         color=alt.Color(clf)
-    #     )
-    
     chart = alt.Chart(dados).mark_line().encode(
-        x=alt.X("x"),
+        x=alt.X("x").title(parameter),
         y=alt.Y(alt.repeat("layer")).title("P(theta)").type("quantitative"),
         color=alt.ColorDatum(alt.repeat("layer"))
     ).repeat(layer=classificators)
 
-    # Salvar em um arquivo JSON (TODO: Retirar isso aqui. É Só debug)
-    with open("chart.json", "w") as file:
-        file.write(chart.to_json())
-
-    print(chart.to_json())
-    chart.save("chart.html")
-    print("Imprimido em chart.json")
-
-    print(dados)
-
-    ...
+    return chart.to_json()
 # END-ADDON
 
 def plotCCC(icc_dict, dict_tmp, dataset, parameter, out, save = False):
@@ -753,31 +729,42 @@ def main(arg_dir = 'output',
     # TODO: Colocar junção de diretório por OS. Vai que o cara ainda usa windows
     out  = '/' + arg_dir    
     
-    #Proficiencia inicial de cada metodo
+    # Proficiencia inicial de cada metodo
     list_theta = {}      
-    #Pega todos os arquivos contendo os valores para o IRT
+    # Pega todos os arquivos contendo os valores para o IRT
     irt_dict = {}
     irt_resp_dict = {}
     
     if respMatrix == None and IRTparam == None:   
-        #Lista todos os diretorios de datasets da pasta output
+        # Lista todos os diretorios de datasets da pasta output
         list_dir = os.listdir(os.getcwd() + out)
         for path in list_dir:
             
-            theta = pd.read_csv(os.getcwd()+out+'/'+path+'/'+path+'_final.csv',index_col=0)
+            theta = pd.read_csv(os.getcwd() + out + '/' + path + '/' + path + '_final.csv', index_col=0)
             list_theta[path] = theta
+
+            # Parâmetros IRT (irt_item_param.csv)
             irt_parameters = pd.read_csv(os.getcwd()+out+'/'+path+'/irt_item_param.csv',index_col=0).to_numpy()
+            
+            # Vetor Resposta (nome.csv)
             res_vector = pd.read_csv(os.getcwd()+out+'/'+path+'/'+path+'.csv').to_numpy()
+
+            # Coluna de uns?
             col = np.ones((len(irt_parameters), 1))    
+            
+            # Parâmetros + colunas de uns? TODO: Pra que serve isso? Perguntar pro Lucas
             new_irt = np.append(irt_parameters, col, axis = 1)
+            
             irt_dict[path] = new_irt
             irt_resp_dict[path] = res_vector
     else:
         path = nameData
         if not os.path.exists(os.getcwd()+out+'/'+path):
             os.makedirs(os.getcwd()+out+'/'+path)
+        
         irt_parameters = pd.read_csv(IRTparam,index_col=0).to_numpy()
         col = np.ones((len(irt_parameters), 1))    
+
         new_irt = np.append(irt_parameters, col, axis = 1)
         irt_dict[path] = new_irt
         
@@ -786,16 +773,18 @@ def main(arg_dir = 'output',
         else:
             res_vector = pd.read_csv(respMatrix, index_col=0).to_numpy()
             theta = pd.read_csv(accur,index_col=0)
+        
         irt_resp_dict[path] = res_vector
         list_theta[path] = theta
         
-    
+
+    # TODO: Perguntar pro Lucas o que isso significa
     dict_tmp = verificaParametros(irt_dict)
     tmp_freq = freqParam(dict_tmp, limit_dif, limit_dis, limit_adv)
     printFreq(tmp_freq, save = save)
     
     if plotDataHist != None:
-        dataset,parameter = plotDataHist.split(',')
+        dataset, parameter = plotDataHist.split(',')
         plothist(dict_tmp, parameter, dataset, out, bins = bins, save = save)
         
     if plotAllHist:
@@ -821,15 +810,15 @@ def main(arg_dir = 'output',
         dict_theta = {}
         p = {}
 
-        p[parameter] = thetaClfEstimate(dict_tmp, irt_dict,irt_resp_dict,dataset,parameter,list_theta, out,save = save)
+        p[parameter] = thetaClfEstimate(dict_tmp, irt_dict, irt_resp_dict, dataset, parameter, list_theta, out, save = save)
         dict_theta[dataset] = p
+        
         icc_dict = CalcICC(dict_theta,irt_dict)
-        get_CCC_vega_chart(icc_dict, dict_tmp, dataset, parameter, out, save = save)
+
+        print(get_CCC_info(icc_dict, dict_tmp, dataset, parameter))
 
         print("=== Concluído! ===")
-        exit()
         ...
-
     # END-ADDON
         
     if plotAllCCC:
