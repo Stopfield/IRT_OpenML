@@ -676,7 +676,7 @@ def plotCCC(icc_dict, dict_tmp, dataset, parameter, out, save = False):
     else:
         plt.show()
 
-def plotAllCCC(icc_dict,dict_tmp, out,save = False):
+def fplotAllCCC(icc_dict,dict_tmp, out,save = False):
     """
     Função que chama o metódo plotCCC e gera as CCC's para todos os datasets e 
     parâmetros de item.
@@ -825,7 +825,7 @@ def main(arg_dir = 'output',
         dict_theta = thetaAllClfEstimate(dict_tmp,irt_dict,irt_resp_dict,list_theta, out,save = save)
         icc_dict = CalcICC(dict_theta, irt_dict)
         # TODO: Aparentemente, a função não existe
-        plotAllCCC(icc_dict, dict_tmp, out, save = save)
+        fplotAllCCC(icc_dict, dict_tmp, out, save = save)
     
     if scoreData != None:
         dataset = scoreData
